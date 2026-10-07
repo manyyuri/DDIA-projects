@@ -404,25 +404,28 @@ type ShardInfo struct {
 }
 
 // Info returns a snapshot of cluster topology and leadership.
+//
+// Only *live* replicas may be reported as leader. A crashed node keeps its
+// last known role in memory, so trusting Status alone reports a dead node as
+// the leader — the same trap as raft's own "a crashed node still thinks it
+// leads" behaviour.
 func (c *Cluster) Info() []ShardInfo {
 	var out []ShardInfo
 	for _, sh := range c.shards {
 		info := ShardInfo{ID: sh.id}
 		for _, rep := range sh.replicas {
 			st := rep.node.Status()
-			if st.State == raft.Leader {
+			if st.State == raft.Leader && c.net.Alive(rep.id) {
 				info.Leader = rep.id
 				info.Term = st.Term
 				info.CommitIndex = st.CommitIndex
-			} else {
-				info.Followers = append(info.Followers, fmt.Sprintf("%s(%v)", rep.id, st.State))
+				continue
 			}
-		}
-		if info.Leader == "" {
-			info.Followers = nil
-			for _, rep := range sh.replicas {
-				info.Followers = append(info.Followers, fmt.Sprintf("%s(%v)", rep.id, rep.node.Status().State))
+			label := fmt.Sprintf("%s(%v)", rep.id, st.State)
+			if !c.net.Alive(rep.id) {
+				label += "(dead)"
 			}
+			info.Followers = append(info.Followers, label)
 		}
 		out = append(out, info)
 	}
