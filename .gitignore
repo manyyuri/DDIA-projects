@@ -1,0 +1,19 @@
+# Go build/test artifacts
+*.test
+*.out
+/bin/
+/tmp/
+
+# Local scratch dirs used by benchmarks and experiments
+/data/
+*.sst
+*.data
+MANIFEST
+MANIFEST.tmp
+raft-state-*.tmp
+wal-*.log
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
